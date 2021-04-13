@@ -39,30 +39,33 @@ namespace PbDb.Client
                 {
                     Name = CustomerName,
                     LastTimeOrdered = CurrentDt,
+                    LastStoreVisited = Store.Id,
+                    LastStoreVisitTime = CurrentDt,
                 };
                 context.Add(Customer);
                 context.SaveChanges();
             }
             else
             {
-                Customer.LastTimeOrdered = CurrentDt;
-            }
-            var StoreVisit = context.StoreVisits.SingleOrDefault(a => a.CustomerId == Customer.Id);
-            if (StoreVisit == null)
-            {
-                StoreVisit = new StoreVisit()
+                //has to check 24 hour limit for store and 2 hour limit for ordering
+                //need to do calculations with datetimes
+                //if store diff from last visited and time since lsv > 24 hours, no go
+                //if store same from lv and < 2 hours since last order, no go
+                //else go
+                if (Store.Id != Customer.LastStoreVisited && CurrentDt < Customer.LastStoreVisitTime.AddHours(24))
                 {
-                    Customer = Customer,
-                    Store = Store,
-                    LastVisitTime = CurrentDt,
-                };
-                context.Add(StoreVisit);
-                context.SaveChanges();
-            }
-            else
-            {
-                StoreVisit.StoreId = Store.Id;
-                StoreVisit.LastVisitTime = CurrentDt;
+                    Console.WriteLine($"You are still locked into {context.Stores.Single(a => a.Id == Customer.LastStoreVisited).Name}");
+                }
+                else if (CurrentDt < Customer.LastTimeOrdered.AddHours(2))
+                {
+                    Console.WriteLine("You can only order once every 2 hours");
+                }
+                else
+                {
+                    Customer.LastTimeOrdered = CurrentDt;
+                    Customer.LastStoreVisited = Store.Id;
+                    Customer.LastStoreVisitTime = CurrentDt;
+                }
             }
             context.SaveChanges();
         }

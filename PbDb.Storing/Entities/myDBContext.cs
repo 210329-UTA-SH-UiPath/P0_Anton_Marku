@@ -25,14 +25,13 @@ namespace PbDb.Storing.Entities
         public virtual DbSet<PizzaTopping> PizzaToppings { get; set; }
         public virtual DbSet<Size> Sizes { get; set; }
         public virtual DbSet<Store> Stores { get; set; }
-        public virtual DbSet<StoreVisit> StoreVisits { get; set; }
         public virtual DbSet<Topping> Toppings { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
+                //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
                 optionsBuilder.UseSqlServer("Server=tcp:p1.database.windows.net,1433;Initial Catalog=myDB;User ID=p1;Password=Pword000");
             }
         }
@@ -57,12 +56,19 @@ namespace PbDb.Storing.Entities
             {
                 entity.Property(e => e.Id).HasColumnName("ID");
 
+                entity.Property(e => e.LastStoreVisitTime).HasColumnType("datetime");
+
                 entity.Property(e => e.LastTimeOrdered).HasColumnType("datetime");
 
                 entity.Property(e => e.Name)
                     .IsRequired()
                     .HasMaxLength(50)
                     .IsUnicode(false);
+
+                entity.HasOne(d => d.LastStoreVisitedNavigation)
+                    .WithMany(p => p.Customers)
+                    .HasForeignKey(d => d.LastStoreVisited)
+                    .HasConstraintName("FK_Customers_Stores");
             });
 
             modelBuilder.Entity<Order>(entity =>
@@ -80,7 +86,6 @@ namespace PbDb.Storing.Entities
                 entity.HasOne(d => d.Customer)
                     .WithMany(p => p.Orders)
                     .HasForeignKey(d => d.CustomerId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Orders_Customers");
 
                 entity.HasOne(d => d.Store)
@@ -103,13 +108,11 @@ namespace PbDb.Storing.Entities
                 entity.HasOne(d => d.Order)
                     .WithMany()
                     .HasForeignKey(d => d.OrderId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Order-Pizzas_Orders");
 
                 entity.HasOne(d => d.Pizza)
                     .WithMany()
                     .HasForeignKey(d => d.PizzaId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Order-Pizzas_Pizzas");
             });
 
@@ -131,13 +134,11 @@ namespace PbDb.Storing.Entities
                 entity.HasOne(d => d.Crust)
                     .WithMany(p => p.Pizzas)
                     .HasForeignKey(d => d.CrustId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Pizzas_Crusts");
 
                 entity.HasOne(d => d.Size)
                     .WithMany(p => p.Pizzas)
                     .HasForeignKey(d => d.SizeId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Pizzas_Sizes");
             });
 
@@ -154,21 +155,17 @@ namespace PbDb.Storing.Entities
                 entity.HasOne(d => d.Pizza)
                     .WithMany()
                     .HasForeignKey(d => d.PizzaId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_PizzaToppings_Pizzas");
 
                 entity.HasOne(d => d.Topping)
                     .WithMany()
                     .HasForeignKey(d => d.ToppingId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_PizzaToppings_Toppings");
             });
 
             modelBuilder.Entity<Size>(entity =>
             {
-                entity.Property(e => e.Id)
-                    .ValueGeneratedNever()
-                    .HasColumnName("ID");
+                entity.Property(e => e.Id).HasColumnName("ID");
 
                 entity.Property(e => e.Price).HasColumnType("decimal(6, 2)");
 
@@ -186,30 +183,6 @@ namespace PbDb.Storing.Entities
                     .IsRequired()
                     .HasMaxLength(50)
                     .IsUnicode(false);
-            });
-
-            modelBuilder.Entity<StoreVisit>(entity =>
-            {
-                entity.HasKey(e => new { e.StoreId, e.CustomerId })
-                    .HasName("PK_StoreVisits");
-
-                entity.ToTable("Store-Visits");
-
-                entity.Property(e => e.StoreId).HasColumnName("StoreID");
-
-                entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
-
-                entity.Property(e => e.LastVisitTime).HasColumnType("datetime");
-
-                entity.HasOne(d => d.Customer)
-                    .WithMany(p => p.StoreVisits)
-                    .HasForeignKey(d => d.CustomerId)
-                    .HasConstraintName("FK_StoreVisits_Customers");
-
-                entity.HasOne(d => d.Store)
-                    .WithMany(p => p.StoreVisits)
-                    .HasForeignKey(d => d.StoreId)
-                    .HasConstraintName("FK_StoreVisits_Stores");
             });
 
             modelBuilder.Entity<Topping>(entity =>

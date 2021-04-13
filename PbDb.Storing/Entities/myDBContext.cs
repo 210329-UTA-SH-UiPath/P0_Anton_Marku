@@ -97,21 +97,21 @@ namespace PbDb.Storing.Entities
 
             modelBuilder.Entity<OrderPizza>(entity =>
             {
-                entity.HasNoKey();
-
                 entity.ToTable("Order-Pizzas");
+
+                entity.Property(e => e.Id).HasColumnName("ID");
 
                 entity.Property(e => e.OrderId).HasColumnName("OrderID");
 
                 entity.Property(e => e.PizzaId).HasColumnName("PizzaID");
 
                 entity.HasOne(d => d.Order)
-                    .WithMany()
+                    .WithMany(p => p.OrderPizzas)
                     .HasForeignKey(d => d.OrderId)
                     .HasConstraintName("FK_Order-Pizzas_Orders");
 
                 entity.HasOne(d => d.Pizza)
-                    .WithMany()
+                    .WithMany(p => p.OrderPizzas)
                     .HasForeignKey(d => d.PizzaId)
                     .HasConstraintName("FK_Order-Pizzas_Pizzas");
             });
@@ -144,7 +144,7 @@ namespace PbDb.Storing.Entities
 
             modelBuilder.Entity<PizzaTopping>(entity =>
             {
-                entity.HasNoKey();
+                entity.HasKey(e => new { e.PizzaId, e.ToppingId });
 
                 entity.ToTable("Pizza-Toppings");
 
@@ -153,12 +153,12 @@ namespace PbDb.Storing.Entities
                 entity.Property(e => e.ToppingId).HasColumnName("ToppingID");
 
                 entity.HasOne(d => d.Pizza)
-                    .WithMany()
+                    .WithMany(p => p.PizzaToppings)
                     .HasForeignKey(d => d.PizzaId)
                     .HasConstraintName("FK_PizzaToppings_Pizzas");
 
                 entity.HasOne(d => d.Topping)
-                    .WithMany()
+                    .WithMany(p => p.PizzaToppings)
                     .HasForeignKey(d => d.ToppingId)
                     .HasConstraintName("FK_PizzaToppings_Toppings");
             });

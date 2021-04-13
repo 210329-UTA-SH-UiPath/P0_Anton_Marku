@@ -78,8 +78,8 @@ namespace PbDb.Client
 
             var OrderPizza = new OrderPizza()
             {
-                OrderId = Order.Id,
-                PizzaId = Pizza.Id,
+                Order = Order,
+                Pizza = Pizza,
             };
             context.Add(Order);
             context.Add(OrderPizza);

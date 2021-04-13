@@ -105,6 +105,8 @@ namespace PbDb.Storing.Entities
 
                 entity.Property(e => e.PizzaId).HasColumnName("PizzaID");
 
+                entity.Property(e => e.Price).HasColumnType("decimal(6, 2)");
+
                 entity.HasOne(d => d.Order)
                     .WithMany(p => p.OrderPizzas)
                     .HasForeignKey(d => d.OrderId)
@@ -113,6 +115,7 @@ namespace PbDb.Storing.Entities
                 entity.HasOne(d => d.Pizza)
                     .WithMany(p => p.OrderPizzas)
                     .HasForeignKey(d => d.PizzaId)
+                    .OnDelete(DeleteBehavior.Cascade)
                     .HasConstraintName("FK_Order-Pizzas_Pizzas");
             });
 

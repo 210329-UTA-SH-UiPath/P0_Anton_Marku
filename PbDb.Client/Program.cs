@@ -15,6 +15,7 @@ namespace PbDb.Client
 
         static void Run()
         {
+            //login + save the store visit
             var context = new myDBContext();
             Console.WriteLine("Enter your user ID");
             string CustomerName = Console.ReadLine();
@@ -47,11 +48,6 @@ namespace PbDb.Client
             }
             else
             {
-                //has to check 24 hour limit for store and 2 hour limit for ordering
-                //need to do calculations with datetimes
-                //if store diff from last visited and time since lsv > 24 hours, no go
-                //if store same from lv and < 2 hours since last order, no go
-                //else go
                 if (Store.Id != Customer.LastStoreVisited && CurrentDt < Customer.LastStoreVisitTime.AddHours(24))
                 {
                     Console.WriteLine($"You are still locked into {context.Stores.Single(a => a.Id == Customer.LastStoreVisited).Name}");
@@ -67,24 +63,27 @@ namespace PbDb.Client
                     Customer.LastStoreVisitTime = CurrentDt;
                 }
             }
-            context.SaveChanges();
-        }
 
-        static string PickStore()
-        {
-            string Store = "";
-            Console.WriteLine("Enter 1 for Domino's, 2 for Pizza Hut");
-            string Selection = Console.ReadLine();
-            switch (Selection)
+            //selecting a pizza preset
+            Console.WriteLine("Enter 2 for MeatPizza, 3 for Veggie");
+            int PizzaChoice = int.Parse(Console.ReadLine());
+            var Pizza = context.Pizzas.FirstOrDefault(p => p.Id == PizzaChoice);
+
+            var Order = new Order()
             {
-                case "1":
-                    Store = "Domino's";
-                    break;
-                case "2":
-                    Store = "Pizza Hut";
-                    break;
-            }
-            return Store;
+                CustomerId = Customer.Id,
+                StoreId = Store.Id,
+                DateAndTime = CurrentDt,
+            };
+
+            var OrderPizza = new OrderPizza()
+            {
+                OrderId = Order.Id,
+                PizzaId = Pizza.Id,
+            };
+            context.Add(Order);
+            context.Add(OrderPizza);
+            context.SaveChanges();
         }
     }
 }

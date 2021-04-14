@@ -1,8 +1,9 @@
-﻿using System.Globalization;
-using System;
+﻿using System;
 using PbDb.Storing.Entities;
-using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using PbDb.Domain.Models;
 
 namespace PbDb.Client
 {
@@ -10,7 +11,16 @@ namespace PbDb.Client
     {
         static void Main(string[] args)
         {
-            Run();
+            Console.WriteLine("Enter 1 if you are a customer, 2 if you are a store owner");
+            int StoreOrCustomer = int.Parse(Console.ReadLine());
+            if (StoreOrCustomer == 1)
+            {
+                Run();
+            }
+            else
+            {
+                StoreRun();
+            }
         }
 
         static void Run()
@@ -63,11 +73,7 @@ namespace PbDb.Client
                     Customer.LastStoreVisitTime = CurrentDt;
                 }
             }
-
-            //selecting a pizza preset
-            Console.WriteLine("Enter 2 for MeatPizza, 3 for Veggie");
-            int PizzaChoice = int.Parse(Console.ReadLine());
-            var Pizza = context.Pizzas.FirstOrDefault(p => p.Id == PizzaChoice);
+            //finished login
 
             var Order = new Order()
             {
@@ -75,15 +81,168 @@ namespace PbDb.Client
                 StoreId = Store.Id,
                 DateAndTime = CurrentDt,
             };
-
-            var OrderPizza = new OrderPizza()
+            //this loops and allows the customer to add or complete their order
+            Console.WriteLine("Enter 1 to order, 0 if you don't want to order or if you want to finalize your order");
+            int OrderOrNot = int.Parse(Console.ReadLine());
+            decimal OrderTotalPrice = 0;
+            int OrderSizeLimit = 50;
+            decimal PriceLimit = 250;
+            while (OrderOrNot != 0 && --OrderSizeLimit > -1)
             {
-                Order = Order,
-                Pizza = Pizza,
-            };
+                //SHOULD BE IN a while loop that repeatedly asks if user wants to add another pizza to order
+                //selecting a pizza preset
+                if (OrderOrNot == 1)
+                {
+                    Console.WriteLine("Enter 1 for preset Pizza, 2 for custom");
+                    int CustomOrPreset = int.Parse(Console.ReadLine());
+                    if (CustomOrPreset == 1)
+                    {
+                        Console.WriteLine("Enter 2 for MeatPizza, 3 for Veggie");
+                        int PizzaChoice = int.Parse(Console.ReadLine());
+                        var Pizza = context.Pizzas.FirstOrDefault(p => p.Id == PizzaChoice);
+                        if (OrderTotalPrice + Pizza.Price > PriceLimit)
+                        {
+                            OrderOrNot = 0;
+                            Console.WriteLine("You've exceed the order price limit, discarding the last selected pizza");
+                        }
+                        else
+                        {
+                            var OrderPizza = new OrderPizza()
+                            {
+                                Order = Order,
+                                Pizza = Pizza,
+                                Price = Pizza.Price,
+                            };
+                            context.Add(OrderPizza);
+                            OrderTotalPrice += Pizza.Price;
+                        }
+                    }
+                    //custom pizza setup
+                    else
+                    {
+                        Console.WriteLine("Pick a crust type");
+                        foreach (Crust Crust in context.Crusts)
+                        {
+                            Console.WriteLine($"{Crust.Id}-{Crust.Type}: {Crust.Price}");
+                        }
+                        int CrustChoice = int.Parse(Console.ReadLine());
+                        var ChosenCrust = context.Crusts.SingleOrDefault(a => a.Id == CrustChoice);
+
+                        Console.WriteLine("Pick a size type");
+                        foreach (Size Size in context.Sizes)
+                        {
+                            Console.WriteLine($"{Size.Id}-{Size.Type}: {Size.Price}");
+                        }
+                        int SizeChoice = int.Parse(Console.ReadLine());
+                        var ChosenSize = context.Sizes.SingleOrDefault(a => a.Id == SizeChoice);
+
+                        //Has to be modified to allow picking an array of toppings
+                        decimal PizzaPrice = 0;
+                        List<Topping> ChosenToppings = new List<Topping>();
+                        for (int i = 0; i < 5; i++)
+                        {
+                            Console.WriteLine("Pick a Topping type");
+                            foreach (Topping Topping in context.Toppings)
+                            {
+                                Console.WriteLine($"{Topping.Id}-{Topping.Type}: {Topping.Price}");
+                            }
+                            int ToppingChoice = int.Parse(Console.ReadLine());
+                            var ChosenTopping = context.Toppings.Single(a => a.Id == ToppingChoice);
+                            ChosenToppings.Add(ChosenTopping);
+                            PizzaPrice += ChosenTopping.Price;
+                        }
+                        PizzaPrice += ChosenCrust.Price;
+                        PizzaPrice += ChosenSize.Price;
+
+                        //var Pizza = context.Pizzas.SingleOrDefault(a => a.Crust == ChosenCrust && a.Size == ChosenSize && a.PizzaToppings == { ChosenTopping} );
+                        if (OrderTotalPrice + PizzaPrice > PriceLimit)
+                        {
+                            OrderOrNot = 0;
+                            Console.WriteLine("You've exceed the order price limit, discarding the last selected pizza");
+                        }
+                        else
+                        {
+                            var OrderPizza = new OrderPizza()
+                            {
+                                Order = Order,
+                                Price = PizzaPrice,
+                            };
+                            context.Add(OrderPizza);
+                            OrderTotalPrice += PizzaPrice;
+                        }
+                    }
+                    if (OrderOrNot == 1)
+                    {
+                        Console.WriteLine("Enter 1 to keep ordering, 0 if you want to finalize your order");
+                        OrderOrNot = int.Parse(Console.ReadLine());
+                    }
+                }
+            }
+            Order.Price = OrderTotalPrice;
             context.Add(Order);
-            context.Add(OrderPizza);
             context.SaveChanges();
+            //At this point we have the order and the OrderPizzas in the database,
+            //Price is below 250 and # items is < 50
+            //let user remove items if they choose
+
+            Console.WriteLine("Enter 1 to modify your order, or 0 to see final price");
+            int ModifyChoice = int.Parse(Console.ReadLine());
+            while (ModifyChoice == 1)
+            {
+                var Items = context.OrderPizzas
+                                    .Where(a => a.OrderId == Order.Id)
+                                    .ToList();
+                if (Items.Count > 0)
+                {
+                    Console.WriteLine("Enter number corresponding to the order item you want removed");
+                    foreach (var Item in Items)
+                    {
+                        Console.WriteLine($"{Item.Id}: Pizza that costs {Item.Price} dollars");
+                    }
+                    int ItemSelection = int.Parse(Console.ReadLine());
+                    var ItemToRemove = context.OrderPizzas.Single(a => a.OrderId == Order.Id && a.Id == ItemSelection);
+                    context.OrderPizzas.Remove(ItemToRemove);
+                    Order.Price -= ItemToRemove.Price;
+                    context.SaveChanges();
+                }
+                else
+                {
+                    Console.WriteLine("No items left to remove");
+                }
+                Console.WriteLine("Enter 1 to keep modifying your order, or 0 to see final price");
+                ModifyChoice = int.Parse(Console.ReadLine());
+            }
+
+            Console.WriteLine($"Final Price: {Order.Price}");
+        }
+
+        static void StoreRun()
+        {
+            Console.WriteLine("Enter 1 for Domino's, 2 for Pizza Hut");
+            int StoreChoice = int.Parse(Console.ReadLine());
+            var context = new myDBContext();
+            var Store = context.Stores.Single(a => a.Id == StoreChoice);
+            Console.WriteLine("Enter 1 for complete order history, 2 for weekly revenue, 3 for monthly");
+            int InformationChoice = int.Parse(Console.ReadLine());
+            if (InformationChoice == 1)
+            {
+                var OrderList = context.Orders.Where(a => a.StoreId == Store.Id);
+                foreach (var Order in OrderList)
+                {
+                    Console.WriteLine($"Customer {Order.CustomerId} spent {Order.Price} dollars on {Order.DateAndTime}");
+                }
+            }
+            SqlConnection connection = new SqlConnection("Server=tcp:p1.database.windows.net,1433;Initial Catalog=myDB;User ID=p1;Password=Pword000");
+            connection.Open();
+            if (InformationChoice == 2)
+            {
+
+
+            }
+            else
+            {
+                //monthly rev
+            }
         }
     }
 }

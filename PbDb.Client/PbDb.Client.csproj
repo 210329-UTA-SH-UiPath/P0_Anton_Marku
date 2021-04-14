@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PbDb.Storing\PbDb.Storing.csproj" />
+    <ProjectReference Include="..\PbDb.Domain\PbDb.Domain.csproj" />
   </ItemGroup>
 
 </Project>

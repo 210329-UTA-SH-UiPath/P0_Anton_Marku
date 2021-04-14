@@ -232,16 +232,50 @@ namespace PbDb.Client
                     Console.WriteLine($"Customer {Order.CustomerId} spent {Order.Price} dollars on {Order.DateAndTime}");
                 }
             }
+            var revenueRecords = new List<RevenueRecord>();
             SqlConnection connection = new SqlConnection("Server=tcp:p1.database.windows.net,1433;Initial Catalog=myDB;User ID=p1;Password=Pword000");
-            connection.Open();
             if (InformationChoice == 2)
             {
-
-
+                SqlCommand cmd = new SqlCommand($"SELECT SUM(Price) AS REVENUE, DATEPART(YEAR, DateAndTime) AS YEAR, DATEPART(WEEK, DateAndTime) AS WEEK FROM Orders WHERE StoreID = {StoreChoice} GROUP BY DATEPART(YEAR, DateAndTime), DATEPART(WEEK, DateAndTime);", connection);
+                connection.Open();
+                SqlDataReader reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        RevenueRecord revenueRecord = new RevenueRecord();
+                        revenueRecord.Revenue = reader.GetDecimal(reader.GetOrdinal("REVENUE"));
+                        revenueRecord.Year = reader.GetInt32(reader.GetOrdinal("YEAR"));
+                        revenueRecord.Week = reader.GetInt32(reader.GetOrdinal("WEEK"));
+                        revenueRecords.Add(revenueRecord);
+                    }
+                    foreach (RevenueRecord revenueRecord1 in revenueRecords)
+                    {
+                        Console.WriteLine(revenueRecord1.WeekPrint());
+                    }
+                }
             }
             else
             {
                 //monthly rev
+                SqlCommand cmd = new SqlCommand($"SELECT SUM(Price) AS REVENUE, DATEPART(YEAR, DateAndTime) AS YEAR, DATEPART(MONTH, DateAndTime) AS MONTH FROM Orders WHERE StoreID = {StoreChoice} GROUP BY DATEPART(YEAR, DateAndTime), DATEPART(MONTH, DateAndTime);", connection);
+                connection.Open();
+                SqlDataReader reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        RevenueRecord revenueRecord = new RevenueRecord();
+                        revenueRecord.Revenue = reader.GetDecimal(reader.GetOrdinal("REVENUE"));
+                        revenueRecord.Year = reader.GetInt32(reader.GetOrdinal("YEAR"));
+                        revenueRecord.Month = reader.GetInt32(reader.GetOrdinal("MONTH"));
+                        revenueRecords.Add(revenueRecord);
+                    }
+                    foreach (RevenueRecord revenueRecord1 in revenueRecords)
+                    {
+                        Console.WriteLine(revenueRecord1.MonthPrint());
+                    }
+                }
             }
         }
     }
